@@ -77,4 +77,4 @@ class Analys:
             return False
     
     def change_price(self, period: int):
-        return self.kline_data[self.iteration][4] < self.kline_data[self.iteration-period][1]
+        return float(self.kline_data[self.iteration][4]) - float(self.kline_data[self.iteration-period][1])

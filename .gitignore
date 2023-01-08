@@ -81,6 +81,7 @@ target/
 profile_default/
 ipython_config.py
 
+
 # pyenv
 .python-version
 
@@ -127,3 +128,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#Initialization 
+.config.ini

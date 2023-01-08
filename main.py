@@ -20,11 +20,13 @@ def bot(client):
         if (analys.falling_flat() or analys.upping_flat()): 
             """ВХОД В ПОЗИЦИЮ"""
             position = True
-            if (analys.change_price(7) <= 0):
+            if (analys.change_price(3) <= 0):
                 """НА ПАДЕНИИ ПОКУПАЕМ И ВЫСТАВЛЯЕМ СТОПЫ"""
                 start_position_time = datetime.fromtimestamp(new_kline[1][0]/1000)
                 take_profit = float(new_kline[1][4]) + analys.get_tp()
                 stop_loss = float(new_kline[1][4]) - analys.get_sl()
+                print('NEW POSITION', start_position_time, "---", analys.change_price(3), "take_profit =", take_profit,
+                    "stop_loss =", stop_loss)
                 while position:
                     new_kline = client.klines("BTCUSDT", "1m", limit=2)
                     current_price = float(new_kline[1][4])
@@ -48,6 +50,8 @@ def bot(client):
                 start_position_time = datetime.fromtimestamp(new_kline[1][0]/1000)
                 take_profit = float(new_kline[1][4]) - analys.get_tp()
                 stop_loss = float(new_kline[1][4]) + analys.get_sl()
+                print('NEW POSITION', start_position_time, "---", analys.change_price(3), "take_profit =", take_profit,
+                    "stop_loss =", stop_loss)
                 while position:
                     new_kline = client.klines("BTCUSDT", "1m", limit=2)
                     current_price = float(new_kline[1][4])
