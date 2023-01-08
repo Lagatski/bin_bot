@@ -36,7 +36,6 @@ class Analys:
             self.vol_kline.append(float(klines_data[i][5]))
             if (len(self.vol_kline) > 5):
                 self.vol_kline.pop(0)
-
             if (sum(self.vol_kline)/5 < 200):
                 self.flat = 1.1
                 self.tp = 5
@@ -48,6 +47,9 @@ class Analys:
             i += 1
 
     
+    def get_last_kline(self):
+        return self.kline_data[self.iteration]
+
     def get_last_time(self):
         return self.kline_data[self.iteration][0]
 
