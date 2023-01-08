@@ -6,67 +6,66 @@ from binance.lib.utils import config_logging
 from configparser import ConfigParser
 from datetime import datetime, timezone
 import time
-from trade_analys import Parameters
+from trade_analys import Analys
 
-def check_strategy_1m(client, symbol: str, limit: int):
-    
-    klines_data = client.klines(symbol, "1m", limit=limit)
-
-    """Сделать проверку массива свечей"""
-    iter = 0
+def bot(client):
+    analys = Analys()
+    analys.set_history_data(client.klines("BTCUSDT", "1m", limit=60))
     strategy_amoumt = 0
-    params = Parameters()
-    while iter < len(klines_data):
-        params.set(klines_data[iter])
-
-        if iter > 9:
-
-            if (-1*params.get_flat() <= float(klines_data[iter][1]) - float(klines_data[iter][4]) <= params.get_flat()):
-                """1)Определить тренд за последние N минут."""
-                falling = klines_data[iter][4] < klines_data[iter-7][1]
-                falling_3m = klines_data[iter][4] < klines_data[iter-3][1]
-                falling_10m = klines_data[iter][4] < klines_data[iter-10][1]
-
-                if (falling):
-                    """на падении мы покупаем. Выставляем стопы"""
-                    tmp_iter = iter
-                    take_profit = float(klines_data[iter][4]) + params.get_tp()
-                    stop_loss = float(klines_data[iter][4]) - params.get_sl()
-
-                    while (iter < len(klines_data)-1):
-                        iter+=1
-                        if (float(klines_data[iter][3]) <= stop_loss):
-                            strategy_amoumt-=params.get_sl()
-                            print('UPPING ', datetime.fromtimestamp(klines_data[tmp_iter][0]/1000), "---",
-                                datetime.fromtimestamp(klines_data[iter][0]/1000), "  -", params.get_sl(), "  =", strategy_amoumt)
-                            break
-                        elif (float(klines_data[iter][2]) >= take_profit):
-                            strategy_amoumt+=params.get_tp()
-                            print('UPPING ', datetime.fromtimestamp(klines_data[tmp_iter][0]/1000), "---",
-                                datetime.fromtimestamp(klines_data[iter][0]/1000), "  +", params.get_tp(), "    =", strategy_amoumt)
-                            break
-                
-                elif (not falling):
-                    """При росте мы продаём. Выставляем стопы"""
-                    tmp_iter = iter
-                    take_profit = float(klines_data[iter][4]) - params.get_tp()
-                    stop_loss = float(klines_data[iter][4]) + params.get_sl()
-
-                    while (iter < len(klines_data)-1):
-                        iter+=1
-                        if (float(klines_data[iter][2]) >= stop_loss):
-                            strategy_amoumt-=params.get_sl()
-                            print('FALLING', datetime.fromtimestamp(klines_data[tmp_iter][0]/1000), "---",
-                                datetime.fromtimestamp(klines_data[iter][0]/1000), "  -", params.get_sl(), "  =", strategy_amoumt)
-                            break 
-                        elif (float(klines_data[iter][3]) <= take_profit):
-                            strategy_amoumt+=params.get_tp()
-                            print('FALLING', datetime.fromtimestamp(klines_data[tmp_iter][0]/1000), "---",
-                                datetime.fromtimestamp(klines_data[iter][0]/1000), "  +", params.get_tp(), "    =", strategy_amoumt)
-                            break 
-           
-        iter+=1
-    print("AMOUNT FOR DAY = ", strategy_amoumt)         
+    
+    while True:
+        new_kline = client.klines("BTCUSDT", "1m", limit=2)
+        if (analys.get_last_time() < new_kline[0][0]):
+            analys.set(new_kline[0])
+        if (analys.falling_flat() or analys.upping_flat()): 
+            """ВХОД В ПОЗИЦИЮ"""
+            position = True
+            if (analys.change_price(7) <= 0):
+                """НА ПАДЕНИИ ПОКУПАЕМ И ВЫСТАВЛЯЕМ СТОПЫ"""
+                start_position_time = datetime.fromtimestamp(new_kline[1][0]/1000)
+                take_profit = float(new_kline[1][4]) + analys.get_tp()
+                stop_loss = float(new_kline[1][4]) - analys.get_sl()
+                while position:
+                    new_kline = client.klines("BTCUSDT", "1m", limit=2)
+                    current_price = float(new_kline[1][4])
+                    if (analys.get_last_time() < new_kline[0][0]):
+                        analys.set(new_kline[0])
+                    if (current_price <= stop_loss):
+                        strategy_amoumt-=analys.get_sl()
+                        print('UPPING ', start_position_time, "---",
+                            datetime.fromtimestamp(new_kline[1][0]/1000), "  -", analys.get_sl(), "  =", strategy_amoumt)
+                        position = False
+                        break
+                    elif (current_price >= take_profit):
+                        strategy_amoumt+=analys.get_tp()
+                        print('UPPING ', start_position_time, "---",
+                            datetime.fromtimestamp(new_kline[1][0]/1000), "  +", analys.get_tp(), "    =", strategy_amoumt)
+                        position = False
+                        break
+            
+            else:
+                """При росте мы продаём. Выставляем стопы"""
+                start_position_time = datetime.fromtimestamp(new_kline[1][0]/1000)
+                take_profit = float(new_kline[1][4]) - analys.get_tp()
+                stop_loss = float(new_kline[1][4]) + analys.get_sl()
+                while position:
+                    new_kline = client.klines("BTCUSDT", "1m", limit=2)
+                    current_price = float(new_kline[1][4])
+                    if (analys.get_last_time() < new_kline[0][0]):
+                        analys.set(new_kline[0])
+                    if (current_price >= stop_loss):
+                        strategy_amoumt-=analys.get_sl()
+                        print('FALLING', start_position_time, "---",
+                            datetime.fromtimestamp(new_kline[1][0]/1000), "  -", analys.get_sl(), "  =", strategy_amoumt)
+                        position = False
+                        break 
+                    elif (current_price <= take_profit):
+                        strategy_amoumt+=analys.get_tp()
+                        print('FALLING', start_position_time, "---",
+                            datetime.fromtimestamp(new_kline[1][0]/1000), "  +", analys.get_tp(), "    =", strategy_amoumt)
+                        position = False
+                        break 
+      
 
 
 def main():
@@ -80,7 +79,7 @@ def main():
 
     client = Client(api_key, api_secret)
     
-    check_strategy_1m(client, "BTCUSDT", 1440)
+    bot(client)
 
 
 if __name__ == "__main__":
