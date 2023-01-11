@@ -16,17 +16,23 @@ class Analys:
         self.iteration += 1
         self.kline_data.append(new_kline)
         self.vol_kline.append(float(new_kline[5]))
-        if len(self.vol_kline) > 5:
+        if len(self.vol_kline) > 4:
             self.vol_kline.pop(0)
-
-        if sum(self.vol_kline)/5 < 200:
+        volume = sum(self.vol_kline)/4
+        if volume < 150:
             self.flat = 1.1
             self.tp = 5
             self.sl = 2.5
-        else:
+        elif 150 <= volume < 350 :
             self.flat = 2
-            self.tp = 5
-            self.sl = 4
+            self.tp = 10
+            self.sl = 5
+        else:
+            self.flat = 3
+            self.tp = 20
+            self.sl = 10
+        print("VOLUME IS", volume)
+        print("FLAT IS", self.flat)
 
     def set_history_data(self, klines_data):
         i = 0
@@ -34,18 +40,24 @@ class Analys:
             self.iteration += 1
             self.kline_data.append(klines_data[i])
             self.vol_kline.append(float(klines_data[i][5]))
-            if len(self.vol_kline) > 5:
+            if len(self.vol_kline) > 4:
                 self.vol_kline.pop(0)
-            if sum(self.vol_kline)/5 < 200:
+            volume = sum(self.vol_kline)/4
+            if volume < 150:
                 self.flat = 1.1
                 self.tp = 5
                 self.sl = 2.5
-            else:
+            elif 150 <= volume < 350 :
                 self.flat = 2
                 self.tp = 8
                 self.sl = 4
+            else:
+                self.flat = 3
+                self.tp = 12
+                self.sl = 6
             i += 1
-
+        print("VOLUME IS", volume)
+        print("FLAT IS", self.flat)
     
     def get_last_kline(self):
         return self.kline_data[self.iteration]
@@ -63,20 +75,6 @@ class Analys:
         return self.sl
 
     """Методы для анализа рынка"""
-    
-    def falling_flat(self):
-        kline_size = float(self.kline_data[self.iteration][1]) - float(self.kline_data[self.iteration][4])
-        if -1*self.flat <= kline_size <= 0:
-            return True
-        else:
-            return False
-    
-    def upping_flat(self):
-        kline_size = float(self.kline_data[self.iteration][1]) - float(self.kline_data[self.iteration][4])
-        if 0.01 <= kline_size <= self.flat:
-            return True
-        else:
-            return False
 
     def is_flat(self):
         kline_size = float(self.kline_data[self.iteration][1]) - float(self.kline_data[self.iteration][4])
