@@ -20,19 +20,17 @@ class Analys:
             self.vol_kline.pop(0)
         volume = sum(self.vol_kline)/4
         if volume < 150:
-            self.flat = 1.1
+            self.flat = 5
             self.tp = 5
             self.sl = 2.5
         elif 150 <= volume < 350 :
-            self.flat = 2
+            self.flat = 10
             self.tp = 10
             self.sl = 5
         else:
-            self.flat = 3
+            self.flat = 15
             self.tp = 20
             self.sl = 10
-        print("VOLUME IS", volume)
-        print("FLAT IS", self.flat)
 
     def set_history_data(self, klines_data):
         i = 0
@@ -44,20 +42,18 @@ class Analys:
                 self.vol_kline.pop(0)
             volume = sum(self.vol_kline)/4
             if volume < 150:
-                self.flat = 1.1
+                self.flat = 4
                 self.tp = 5
                 self.sl = 2.5
             elif 150 <= volume < 350 :
-                self.flat = 2
+                self.flat = 8
                 self.tp = 8
                 self.sl = 4
             else:
-                self.flat = 3
+                self.flat = 15
                 self.tp = 12
                 self.sl = 6
             i += 1
-        print("VOLUME IS", volume)
-        print("FLAT IS", self.flat)
     
     def get_last_kline(self):
         return self.kline_data[self.iteration]
