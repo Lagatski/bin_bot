@@ -10,56 +10,90 @@ class Direction(Enum):
     SELL_LONG = 3
     SELL_SHORT = 4
 
-def control_position(self):
+def _control_position(self, deal_direction: Direction, amount: float):
     while self.position:
-        new_kline = self.client.klines("BTCUSDT", "1m", limit=2)
+        '''Get new info + save last kline'''
+        new_kline = self.client.klines("BTCTUSD", "1m", limit=2)
         if self.analys.get_last_time() < new_kline[0][0]:
             self.analys.set(new_kline[0])
         current_price = float(new_kline[1][4])
-        if current_price <= self.stop_loss:
-            self.amount-=(self.opening_price - current_price)
-            print('CLOSE', datetime.now(), "  -", self.opening_price - current_price, "=", self.amount)
+
+        '''Checking the position'''
+        if (deal_direction == Direction.BUY_LONG or deal_direction == Direction.BUY_SHORT) and \
+            (current_price <= self.stop_loss or current_price >= self.take_profit):
+            params = {
+            "symbol": "BTCTUSD",
+            "side": "SELL",
+            "type": "MARKET",
+            "quantity": amount,
+            "isIsolated": True
+            }
+            order_info = self.client.new_margin_order(**params)
+            self.closing_price = float(order_info['price']) 
             self.position = False
-        elif current_price >= self.take_profit:
-            self.amount+=(current_price - self.opening_price)
-            print('CLOSE', datetime.now(), "  +", current_price - self.opening_price, "=", self.amount)
+            self.loan.put_loan(self)
+
+        elif (deal_direction == Direction.SELL_LONG or deal_direction == Direction.SELL_SHORT) and \
+            (current_price >= self.stop_loss or current_price <= self.take_profit):
+            params = {
+            "symbol": "BTCTUSD",
+            "side": "SELL",
+            "type": "MARKET",
+            "quantity": amount,
+            "isIsolated": True
+            }
+            order_info = self.client.new_margin_order(**params)
+            self.closing_price = float(order_info['price']) 
             self.position = False
+            self.loan.put_loan(self)
+
+        if self.position == False:
+            print('CLOSE', datetime.now(), self.opening_price - self.closing_price, "=", self.amount)
+            break
 
 
-def new_order(self, deal_direction: Direction, new_kline: list):
-    """if deal_direction == Direction.BUY_LONG:
+def _new_order(self, deal_direction: Direction, new_kline: list):
 
-        if loan.get_loan(self.deposit*9):
-          
+    if deal_direction == Direction.BUY_LONG or deal_direction == Direction.BUY_SHORT:
+        print('BUY')
+        self.stop_loss = float(new_kline[0][4]) - self.analys.get_sl() #SL выставляем от значения последней закрытой свечи
+        if deal_direction == Direction.BUY_LONG:
+            self.take_profit = float(new_kline[0][4]) + self.analys.get_tp() #TP выставляем от значения последней закрытой свечи
         else:
-            print()   
-        self.client.margin_borrow(asset='USDT', amount=borrow_amount, symbol='BTCUSDT', isIsolated=True)
-    
-    elif deal_direction == Direction.BUY_SHORT:
-
-    elif deal_direction == Direction.SELL_LONG:
-
-    elif deal_direction == Direction.SELL_SHORT:
-        borrow_amount = utils.round((self.deposit*9) / float(new_kline[1][4]),)
-        self.client.margin_borrow(asset='BTC', amount='0.1', symbol='BTCUSDT', isIsolated=True)
-    """
-    params = {
-        "symbol": "BTCUSDT",
-        "side": deal_direction,
+            self.take_profit = float(new_kline[0][4]) + self.analys.get_tp()/2 #TP выставляем от значения последней закрытой свечи
+        amount = self.loan.get_loan('TUSD', new_kline)
+        params = {
+        "symbol": "BTCTUSD",
+        "side": "BUY",
         "type": "MARKET",
-        "quantity": quantity,
+        "quantity": amount,
         "isIsolated": True
-    }
+        }
+        self.opening_price = float(self.client.new_margin_order(**params)['price']) 
+        self.position = True
+        utils.print_info(self) # Next step will be logging
+        return amount
 
-    tmp = self.client.new_margin_order(**params)
-    self.opening_price = float(tmp['price']) 
+    elif deal_direction == Direction.SELL_LONG or deal_direction == Direction.SELL_SHORT:
+        print('SELL')
+        self.stop_loss = float(new_kline[0][4]) + self.analys.get_sl() #SL выставляем от значения последней закрытой свечи
+        if deal_direction == Direction.SELL_LONG:
+            self.take_profit = float(new_kline[0][4]) - self.analys.get_tp() #TP выставляем от значения последней закрытой свечи
+        else:
+            self.take_profit = float(new_kline[0][4]) - self.analys.get_tp()/2 #TP выставляем от значения последней закрытой свечи
+        amount = self.loan.get_loan('BTC', new_kline)
+        params = {
+        "symbol": "BTCTUSD",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": amount,
+        "isIsolated": True
+        }
+        self.opening_price = float(self.client.new_margin_order(**params)['price']) 
+        self.position = True
+        utils.print_info(self) # Next step will be logging
+        return amount
 
-    self.stop_loss = float(new_kline[0][4]) - self.analys.get_sl() #SL выставляем от значения последней закрытой свечи
-
-    if time == 5:
-        self.take_profit = float(new_kline[0][4]) + self.analys.get_tp() #TP выставляем от значения последней закрытой свечи
-    elif time == 3:
-        self.take_profit = float(new_kline[0][4]) + self.analys.get_tp()/2 #TP выставляем от значения последней закрытой свечи
-    
-    self.position = True
-    utils.print_info(self)
+def start_position(self, deal_direction: Direction, new_kline: list):
+    amount = _new_order(self, deal_direction, new_kline)
+    _control_position(self, deal_direction, amount)
